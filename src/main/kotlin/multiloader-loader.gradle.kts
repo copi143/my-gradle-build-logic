@@ -6,11 +6,6 @@ plugins {
 
 val modId = project.property("modId") as String
 
-val embeddedProjects = listOf(
-    ":common" to "composeClasses",
-    ":msdftext" to "msdftextClasses",
-)
-
 configurations {
     create("commonJava") {
         isCanBeResolved = true
@@ -20,12 +15,6 @@ configurations {
     }
     create("commonResources") {
         isCanBeResolved = true
-    }
-    embeddedProjects.forEach { (path, configuration) ->
-        create(configuration) {
-            isCanBeResolved = true
-            isCanBeConsumed = false
-        }
     }
 }
 
@@ -38,27 +27,6 @@ dependencies {
     "commonJava"(project(path = ":common", configuration = "commonJava"))
     "commonKotlin"(project(path = ":common", configuration = "commonKotlin"))
     "commonResources"(project(path = ":common", configuration = "commonResources"))
-    // Compose runtime classes are merged straight into the loader jar by :common (no jar-in-jar), and
-    // the same resolved files feed the dev classpath.
-    //
-    // Dev runs use the merged class directory instead of the official jars, because ModLauncher's
-    // ModuleClassLoader cannot create modules for jars without an Automatic-Module-Name manifest
-    // attribute (official ui-desktop/foundation have none) and silently skips them.
-    //
-    // msdftext is compiled as a separate module but merged directly into common/fabric/forge jars
-    // (no jar-in-jar). Keep the same pattern as composeClasses so runClient and final jars see it.
-    embeddedProjects.forEach { (path, configuration) ->
-        configuration(project(path = path, configuration = configuration))
-        "runtimeOnly"(project(path = path, configuration = configuration))
-    }
-}
-
-tasks.named<Jar>("jar") {
-    embeddedProjects.forEach { (path, configuration) ->
-        dependsOn(configurations[configuration])
-        from(configurations[configuration])
-    }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.named<JavaCompile>("compileJava") {
@@ -79,12 +47,6 @@ tasks.named<ProcessResources>("processResources") {
     // common/res is a generated, gitignored source dir: always regenerate it before packaging so
     // build/jar/run* pick up the latest assets even on a fresh clone.
     dependsOn(":common:generateAssets")
-    // Compose classes go to the exploded dev resources so runClient sees them exactly like the
-    // built jar does (the jar task merges the same configuration).
-    embeddedProjects.forEach { (path, configuration) ->
-        dependsOn(configurations[configuration])
-        from(configurations[configuration])
-    }
 }
 
 tasks.named<Jar>("sourcesJar") {
