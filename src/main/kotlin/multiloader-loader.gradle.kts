@@ -4,7 +4,7 @@ plugins {
     id("multiloader-common")
 }
 
-val modId = project.property("modId") as String
+val mod = project.extensions.getByType<ModInfoExtension>()
 
 configurations {
     create("commonJava") {
@@ -21,7 +21,7 @@ configurations {
 dependencies {
     "compileOnly"(project(":common")) {
         capabilities {
-            requireCapability("${project.group}:${modId}")
+            requireCapability("${project.group}:${mod.id}")
         }
     }
     "commonJava"(project(path = ":common", configuration = "commonJava"))

@@ -2,17 +2,14 @@ val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
 
 plugins {
     `maven-publish`
+    id("common-resources")
     id("multiloader-base")
 }
 
-val modId = project.property("modId") as String
-val modName = project.property("modName") as String
-val modAuthor = project.property("modAuthor") as String
-val license = project.property("license") as String
-val credits = project.property("credits") as String
+val mod = project.extensions.getByType<ModInfoExtension>()
 
 base {
-    archivesName.set("${modId}-${project.name}-${libs.versions.minecraft.get()}")
+    archivesName.set("${mod.id}-${project.name}-${libs.versions.minecraft.get()}")
 }
 
 sourceSets.main {
@@ -54,11 +51,11 @@ listOf("apiElements", "runtimeElements", "sourcesElements", "javadocElements").f
     configurations[variant].outgoing {
         capability("${project.group}:${base.archivesName.get()}:${project.version}")
         capability(
-            "${project.group}:${modId}-${project.name}-${
+            "${project.group}:${mod.id}-${project.name}-${
                 libs.versions.minecraft.get()
             }:${project.version}"
         )
-        capability("${project.group}:${modId}:${project.version}")
+        capability("${project.group}:${mod.id}:${project.version}")
     }
     publishing.publications.configureEach {
         if (this is MavenPublication) {
@@ -82,12 +79,12 @@ tasks.named<Jar>("jar") {
     manifest {
         attributes(
             mapOf(
-                "Specification-Title" to modName,
-                "Specification-Vendor" to modAuthor,
+                "Specification-Title" to mod.name,
+                "Specification-Vendor" to mod.author,
                 "Specification-Version" to archiveVersion,
                 "Implementation-Title" to project.name,
                 "Implementation-Version" to archiveVersion,
-                "Implementation-Vendor" to modAuthor,
+                "Implementation-Vendor" to mod.author,
                 "Built-On-Minecraft" to libs.versions.minecraft.get()
             )
         )
@@ -100,34 +97,6 @@ tasks.named("dokkaGeneratePublicationJavadoc") {
     } else {
         dependsOn(":common:generateAssets")
     }
-}
-
-tasks.named<ProcessResources>("processResources") {
-    val expandProps = mapOf(
-        "version" to project.version,
-        "group" to project.group,
-        "minecraft_version" to libs.versions.minecraft.get(),
-        "minecraft_version_range" to libs.versions.minecraftRange.get(),
-        "fabric_version" to libs.versions.fabricApi.get(),
-        "fabric_loader_version" to libs.versions.fabricLoader.get(),
-        "flk_version" to libs.versions.flk.get(),
-        "mod_name" to modName,
-        "mod_author" to modAuthor,
-        "mod_id" to modId,
-        "license" to license,
-        "description" to project.description,
-        "forge_version" to libs.versions.forge.get(),
-        "forge_range" to libs.versions.forgeRange.get(),
-        "kff_version" to libs.versions.kff.get(),
-        "kff_version_range" to libs.versions.kffRange.get(),
-        "credits" to credits,
-        "java_version" to libs.versions.java.get(),
-    )
-
-    filesMatching(listOf("pack.mcmeta", "fabric.mod.json", "META-INF/*mods.toml", "*.mixins.json")) {
-        expand(expandProps)
-    }
-    inputs.properties(expandProps)
 }
 
 publishing {
