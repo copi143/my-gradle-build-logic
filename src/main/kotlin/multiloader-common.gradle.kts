@@ -1,4 +1,4 @@
-val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
+val libs = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 plugins {
     `maven-publish`
@@ -6,10 +6,15 @@ plugins {
     id("multiloader-base")
 }
 
+fun VersionCatalog.versionString(alias: String): String = findVersion(alias).map { it.requiredVersion }.orElse("")!!
+
 val mod = project.extensions.getByType<ModInfoExtension>()
 
 base {
-    archivesName.set("${mod.id}-${project.name}-${libs.versions.minecraft.get()}")
+    val mc = libs.versionString("minecraft")
+    if (mc.isNotEmpty()) {
+        archivesName.set("${mod.id}-${project.name}-$mc")
+    }
 }
 
 sourceSets.main {
@@ -28,7 +33,7 @@ configurations {
 }
 
 dependencies {
-    "gtceujar"(libs.gtceu)
+    "gtceujar"(libs.findLibrary("gtceu"))
 }
 
 val extractGtJarjar = tasks.register<Sync>("extractGtJarjar") {
@@ -50,11 +55,6 @@ dependencies {
 listOf("apiElements", "runtimeElements", "sourcesElements", "javadocElements").forEach { variant ->
     configurations[variant].outgoing {
         capability("${project.group}:${base.archivesName.get()}:${project.version}")
-        capability(
-            "${project.group}:${mod.id}-${project.name}-${
-                libs.versions.minecraft.get()
-            }:${project.version}"
-        )
         capability("${project.group}:${mod.id}:${project.version}")
     }
     publishing.publications.configureEach {
@@ -85,7 +85,7 @@ tasks.named<Jar>("jar") {
                 "Implementation-Title" to project.name,
                 "Implementation-Version" to archiveVersion,
                 "Implementation-Vendor" to mod.author,
-                "Built-On-Minecraft" to libs.versions.minecraft.get()
+                "Built-On-Minecraft" to libs.versionString("minecraft"),
             )
         )
     }
