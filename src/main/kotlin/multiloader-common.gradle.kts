@@ -33,7 +33,7 @@ configurations {
 }
 
 dependencies {
-    "gtceujar"(libs.findLibrary("gtceu"))
+    "gtceujar"(libs.findLibrary("gtceu").get())
 }
 
 val extractGtJarjar = tasks.register<Sync>("extractGtJarjar") {
