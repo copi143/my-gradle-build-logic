@@ -7,23 +7,51 @@ plugins {
     id("jarjar-compile-only")
 }
 
+if (project.name == "common") {
+    apply(plugin = "resgen")
+
+    configurations {
+        create("commonJava") {
+            isCanBeResolved = false
+            isCanBeConsumed = true
+        }
+        create("commonKotlin") {
+            isCanBeResolved = false
+            isCanBeConsumed = true
+        }
+        create("commonResources") {
+            isCanBeResolved = false
+            isCanBeConsumed = true
+        }
+    }
+
+    afterEvaluate {
+        artifacts {
+            sourceSets.main.get().java.sourceDirectories.forEach { resourceDir ->
+                add("commonJava", resourceDir)
+            }
+            sourceSets.main.get().kotlin.sourceDirectories.forEach { resourceDir ->
+                add("commonKotlin", resourceDir)
+            }
+            sourceSets.main.get().resources.sourceDirectories.forEach { resourceDir ->
+                add("commonResources", resourceDir)
+            }
+        }
+    }
+}
+
 fun VersionCatalog.versionString(alias: String): String = findVersion(alias).map { it.requiredVersion }.orElse("")!!
 
 val mod = project.extensions.getByType<ModInfoExtension>()
 
-base {
-    val mc = libs.versionString("minecraft")
-    if (mc.isNotEmpty()) {
-        archivesName.set("${mod.id}-${project.name}-$mc")
-    }
+libs.versionString("minecraft").takeIf { it.isNotEmpty() }?.let {
+    base.archivesName.set("${mod.id}-${project.name}-$it")
 }
 
 sourceSets.main {
     java.srcDir("src")
 }
 
-// Declare capabilities on the outgoing configurations.
-// Read more about capabilities here: https://docs.gradle.org/current/userguide/component_capabilities.html#sec:declaring-additional-capabilities-for-a-local-component
 listOf("apiElements", "runtimeElements", "sourcesElements", "javadocElements").forEach { variant ->
     configurations[variant].outgoing {
         capability("${project.group}:${base.archivesName.get()}:${project.version}")
@@ -59,7 +87,7 @@ tasks.named<Jar>("jar") {
     }
 }
 
-tasks.named("dokkaGeneratePublicationJavadoc") {
+tasks.dokkaGeneratePublicationJavadoc {
     dependsOn(":common:generateAssets")
 }
 

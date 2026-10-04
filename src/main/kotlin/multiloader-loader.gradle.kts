@@ -44,7 +44,7 @@ tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
 tasks.named<ProcessResources>("processResources") {
     dependsOn(configurations["commonResources"])
     from(configurations["commonResources"])
-    // common/res is a generated, gitignored source dir: always regenerate it before packaging so
+    // common/build/generated/res is generated output: always regenerate it before packaging so
     // build/jar/run* pick up the latest assets even on a fresh clone.
     dependsOn(":common:generateAssets")
 }
@@ -56,7 +56,7 @@ tasks.named<Jar>("sourcesJar") {
     from(configurations["commonKotlin"])
     dependsOn(configurations["commonResources"])
     from(configurations["commonResources"])
-    // common/res is a generated, gitignored source dir: sourcesJar consumes it via commonResources,
+    // common/build/generated/res is generated output consumed via commonResources,
     // so declare the same dependency as processResources to satisfy Gradle's implicit-dependency
     // validation and guarantee up-to-date assets.
     dependsOn(":common:generateAssets")
