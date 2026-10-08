@@ -1,7 +1,8 @@
 import org.jetbrains.dokka.gradle.DokkaExtension
 
 plugins {
-    id("multiloader-common")
+    id("multiloader-base")
+    id("jarjar-compile-only")
 }
 
 val mod = project.extensions.getByType<ModInfoExtension>()

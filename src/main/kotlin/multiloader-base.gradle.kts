@@ -1,66 +1,72 @@
-import org.jetbrains.dokka.gradle.DokkaExtension
-
-val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
+val libs = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 plugins {
-    `java-library`
-    id("org.jetbrains.kotlin.jvm")
-    id("org.jetbrains.dokka-javadoc")
+    `maven-publish`
+    id("common-resources")
+    id("kotlin-project")
+    id("kotlin-project-java-support")
 }
 
-java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get().toInt()))
-    withSourcesJar()
-    withJavadocJar()
+fun VersionCatalog.versionString(alias: String): String = findVersion(alias).map { it.requiredVersion }.orElse("")!!
+
+val mod = project.extensions.getByType<ModInfoExtension>()
+
+libs.versionString("minecraft").takeIf { it.isNotEmpty() }?.let {
+    base.archivesName.set("${mod.id}-${project.name}-$it")
 }
 
-kotlin {
-    jvmToolchain(libs.versions.java.get().toInt())
+listOf("apiElements", "runtimeElements", "sourcesElements", "javadocElements").forEach { variant ->
+    configurations[variant].outgoing {
+        capability("${project.group}:${base.archivesName.get()}:${project.version}")
+        capability("${project.group}:${mod.id}:${project.version}")
+    }
+    publishing.publications.configureEach {
+        if (this is MavenPublication) {
+            suppressPomMetadataWarningsFor(variant)
+        }
+    }
 }
 
-sourceSets.main {
-    java.srcDirs.clear()
-    kotlin.srcDirs.clear()
-    kotlin.setSrcDirs(listOf("src"))
-    resources.srcDirs.clear()
-    resources.setSrcDirs(listOf("resources"))
+tasks.named<Jar>("sourcesJar") {
+    dependsOn(":common:generateAssets")
+    from(rootProject.file("LICENSE"))
 }
 
-sourceSets.test {
-    java.srcDirs.clear()
-    kotlin.srcDirs.clear()
-    kotlin.setSrcDirs(listOf("test"))
-    resources.srcDirs.clear()
-    resources.setSrcDirs(listOf("test/resources"))
+tasks.named<Jar>("jar") {
+    from(rootProject.file("LICENSE"))
+
+    manifest {
+        attributes(
+            mapOf(
+                "Specification-Title" to mod.name,
+                "Specification-Vendor" to mod.author,
+                "Specification-Version" to archiveVersion,
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to archiveVersion,
+                "Implementation-Vendor" to mod.author,
+                "Built-On-Minecraft" to libs.versionString("minecraft"),
+            )
+        )
+    }
 }
 
-dependencies {
-    implementation(kotlin("stdlib"))
-    testImplementation(libs.junit)
-    testImplementation(kotlin("test"))
-    testRuntimeOnly(libs.junit.launcher)
+tasks.dokkaGeneratePublicationJavadoc {
+    dependsOn(":common:generateAssets")
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
-// Prevent the default javadoc task from running, as Dokka is
-// responsible for generating the docs now
-tasks.named<Javadoc>("javadoc") {
-    isEnabled = false
-}
-
-// Make the javadoc jar take in the Dokka output
-tasks.named<Jar>("javadocJar") {
-    dependsOn(tasks.named("dokkaGeneratePublicationJavadoc"))
-    from(tasks.named("dokkaGeneratePublicationJavadoc"))
-}
-
-configure<DokkaExtension> {
-    dokkaSourceSets.configureEach {
-        skipDeprecated.set(false)
-        reportUndocumented.set(false)
-        sourceRoots.from(project.the<JavaPluginExtension>().sourceSets["main"].allSource)
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            artifactId = base.archivesName.get()
+            from(components["java"])
+        }
+    }
+    repositories {
+        val mavenUrl = System.getenv("local_maven_url")
+        if (!mavenUrl.isNullOrEmpty()) {
+            maven {
+                url = uri(mavenUrl)
+            }
+        }
     }
 }
