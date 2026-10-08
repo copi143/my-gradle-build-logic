@@ -1,3 +1,6 @@
+import org.jetbrains.gradle.ext.packagePrefix
+import org.jetbrains.gradle.ext.settings
+
 val libs = project.extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 plugins {
@@ -5,6 +8,7 @@ plugins {
     id("common-resources")
     id("multiloader-base")
     id("jarjar-compile-only")
+    id("org.jetbrains.gradle.plugin.idea-ext")
 }
 
 if (project.name == "common") {
@@ -50,6 +54,14 @@ libs.versionString("minecraft").takeIf { it.isNotEmpty() }?.let {
 
 sourceSets.main {
     java.srcDir("src")
+}
+
+idea {
+    module {
+        settings {
+            packagePrefix["src"] = group.toString()
+        }
+    }
 }
 
 listOf("apiElements", "runtimeElements", "sourcesElements", "javadocElements").forEach { variant ->
